@@ -327,6 +327,7 @@ type PrivateDNSZoneInfo struct {
 
 type PrivateDNSClient struct {
 	resourceGroup             string
+	vnetResourceGroup         string
 	virtualNetwork            string
 	zonesClient               azprivatedns.PrivateZonesClient
 	recordsetsClient          azprivatedns.RecordSetsClient
@@ -334,7 +335,7 @@ type PrivateDNSClient struct {
 	virtualNetworksClient     aznetwork.VirtualNetworksClient
 }
 
-func NewPrivateDNSClient(session *Session, resourceGroup string, virtualNetwork string) *PrivateDNSClient {
+func NewPrivateDNSClient(session *Session, resourceGroup string, virtualNetwork string, vnetResourceGroup string) *PrivateDNSClient {
 	zonesClient := azprivatedns.NewPrivateZonesClient(session.Credentials.SubscriptionID)
 	zonesClient.Authorizer = session.Authorizer
 
@@ -347,7 +348,7 @@ func NewPrivateDNSClient(session *Session, resourceGroup string, virtualNetwork 
 	virtualNetworksClient := aznetwork.NewVirtualNetworksClient(session.Credentials.SubscriptionID)
 	virtualNetworksClient.Authorizer = session.Authorizer
 
-	return &PrivateDNSClient{resourceGroup, virtualNetwork, zonesClient, recordsetsClient, virtualNetworkLinksClient, virtualNetworksClient}
+	return &PrivateDNSClient{resourceGroup, vnetResourceGroup, virtualNetwork, zonesClient, recordsetsClient, virtualNetworkLinksClient, virtualNetworksClient}
 }
 
 // Gets a single private zone and serializes it
@@ -661,7 +662,7 @@ func showLegacySoaRecord(soaRecord *azdns.SoaRecord, zoneName string, fqdn strin
 
 // print out a legacy CNAME record
 func showLegacyCnameRecord(cnameRecord *azdns.CnameRecord, zoneName string, fqdn string, ttl int64) {
-	shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+	shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 
 	log.Printf("%s CNAME %d %s", shortName, ttl, safeString(cnameRecord.Cname))
 }
@@ -673,7 +674,7 @@ func showLegacyARecords(aRecords *[]azdns.ARecord, zoneName string, fqdn string,
 	for _, aRecord := range *aRecords {
 		ipv4Address := safeString(aRecord.Ipv4Address)
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s A %-6d %s", shortName, ttl, ipv4Address)
 			index = strings.Index(header, ipv4Address)
 			log.Printf(header)
@@ -691,7 +692,7 @@ func showLegacyAaaaRecords(aaaaRecords *[]azdns.AaaaRecord, zoneName string, fqd
 	for _, aaaaRecord := range *aaaaRecords {
 		ipv6Address := safeString(aaaaRecord.Ipv6Address)
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s AAAA %-6d %s", shortName, ttl, ipv6Address)
 			index = strings.Index(header, ipv6Address)
 			log.Printf(header)
@@ -711,7 +712,7 @@ func showLegacyMxRecords(mxRecords *[]azdns.MxRecord, zoneName string, fqdn stri
 		preference := safeInt32(mxRecord.Preference)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s MX %-6d %-6d %s", shortName, ttl, preference, exchange)
 			index = strings.Index(header, fmt.Sprintf("%d", preference))
 			log.Printf(header)
@@ -730,7 +731,7 @@ func showLegacyPtrRecords(ptrRecords *[]azdns.PtrRecord, zoneName string, fqdn s
 		ptrdname := safeString(ptrRecord.Ptrdname)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s PTR %s", shortName, ptrdname)
 			index = strings.Index(header, ptrdname)
 			log.Printf(header)
@@ -752,7 +753,7 @@ func showLegacySrvRecords(srvRecords *[]azdns.SrvRecord, zoneName string, fqdn s
 		target := safeString(srvRecord.Target)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s SRV %-6d %-6d %-6d %-6d %s", shortName, ttl, priority, weight, port, target)
 			index = strings.Index(header, fmt.Sprintf("%d", *srvRecord.Priority))
 			log.Printf(header)
@@ -771,7 +772,7 @@ func showLegacyTxtRecords(txtRecords *[]azdns.TxtRecord, zoneName string, fqdn s
 		value := safeStringArray(txtRecord.Value)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s TXT %s", shortName, value)
 			index = strings.Index(header, value)
 			log.Printf(header)
@@ -798,7 +799,7 @@ func showPrivateSoaRecord(soaRecord *azprivatedns.SoaRecord, zoneName string, fq
 
 // print out a private CNAME record
 func showPrivateCnameRecord(cnameRecord *azprivatedns.CnameRecord, zoneName string, fqdn string, ttl int64) {
-	shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+	shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 
 	log.Printf("%s CNAME %d %s", shortName, ttl, safeString(cnameRecord.Cname))
 }
@@ -811,7 +812,7 @@ func showPrivateARecords(aRecords *[]azprivatedns.ARecord, zoneName string, fqdn
 		ipv4Address := safeString(aRecord.Ipv4Address)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s A %-6d %s", shortName, ttl, ipv4Address)
 			index = strings.Index(header, ipv4Address)
 			log.Printf(header)
@@ -830,7 +831,7 @@ func showPrivateAaaaRecords(aaaaRecords *[]azprivatedns.AaaaRecord, zoneName str
 		ipv6Address := safeString(aaaaRecord.Ipv6Address)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s AAAA %-6d %s", shortName, ttl, ipv6Address)
 			index = strings.Index(header, ipv6Address)
 			log.Printf(header)
@@ -850,7 +851,7 @@ func showPrivateMxRecords(mxRecords *[]azprivatedns.MxRecord, zoneName string, f
 		exchange := safeString(mxRecord.Exchange)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s MX %-6d %-6d %s", shortName, ttl, preference, exchange)
 			index = strings.Index(header, fmt.Sprintf("%d", preference))
 			log.Printf(header)
@@ -869,7 +870,7 @@ func showPrivatePtrRecords(ptrRecords *[]azprivatedns.PtrRecord, zoneName string
 		ptrdname := safeString(ptrRecord.Ptrdname)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s PTR %s", shortName, ptrdname)
 			index = strings.Index(header, ptrdname)
 			log.Printf(header)
@@ -891,7 +892,7 @@ func showPrivateSrvRecords(srvRecords *[]azprivatedns.SrvRecord, zoneName string
 		target := safeString(srvRecord.Target)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s SRV %-6d %-6d %-6d %-6d %s", shortName, ttl, priority, weight, port, target)
 			index = strings.Index(header, fmt.Sprintf("%d", priority))
 			log.Printf(header)
@@ -910,7 +911,7 @@ func showPrivateTxtRecords(txtRecords *[]azprivatedns.TxtRecord, zoneName string
 		value := safeStringArray(txtRecord.Value)
 
 		if count == 0 {
-			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 0)
+			shortName := strings.Replace(fqdn, "."+zoneName+".", "", 1)
 			header := fmt.Sprintf("%s TXT %s", shortName, value)
 			index = strings.Index(header, value)
 			log.Printf(header)
@@ -939,7 +940,7 @@ func (client *PrivateDNSClient) MigrateLegacyZone(legacyDNSZoneInfo *LegacyDNSZo
 	// Setup the associated recordsets to create
 	privateRecordSets := []*azprivatedns.RecordSet{}
 	for _, legacyRecordSet := range legacyRecordSets {
-		recordType := strings.Replace(*legacyRecordSet.Type, "/dnszones/", "/privateDnsZones/", 0)
+		recordType := strings.Replace(*legacyRecordSet.Type, "/dnszones/", "/privateDnsZones/", 1)
 
 		privateRecordSet := azprivatedns.RecordSet{
 			Name: legacyRecordSet.Name,
@@ -1010,14 +1011,14 @@ func (client *PrivateDNSClient) MigrateLegacyZone(legacyDNSZoneInfo *LegacyDNSZo
 	}
 
 	// Get the virtual network so we have some parameters for the link creation
-	virtualNetwork, err := client.virtualNetworksClient.Get(ctx, client.resourceGroup, client.virtualNetwork, "")
+	virtualNetwork, err := client.virtualNetworksClient.Get(ctx, client.vnetResourceGroup, client.virtualNetwork, "")
 	if err != nil {
 		return err
 	}
 
 	location := "global"
 	virtualNetworkID := *virtualNetwork.ID
-	virtualNetworkLinkName := fmt.Sprintf("%s-network-link", strings.Replace(client.resourceGroup, "-rg", "", 0))
+	virtualNetworkLinkName := fmt.Sprintf("%s-network-link", strings.Replace(client.vnetResourceGroup, "-rg", "", 1))
 
 	// pass a flag for this?
 	registrationEnabled := false
@@ -1166,7 +1167,7 @@ func doListPrivateZone(resourceGroup string, privateZone string) error {
 		return err
 	}
 
-	privateDNSClient := NewPrivateDNSClient(session, resourceGroup, "")
+	privateDNSClient := NewPrivateDNSClient(session, resourceGroup, "", "")
 
 	// Serialize/Deserialize to make deep copy
 	szone, err := privateDNSClient.GetZoneSerialized(privateZone)
@@ -1215,7 +1216,7 @@ func doListAllPrivateZones() error {
 		return err
 	}
 
-	privateDNSClient := NewPrivateDNSClient(session, "", "")
+	privateDNSClient := NewPrivateDNSClient(session, "", "", "")
 
 	szones, err := privateDNSClient.GetZonesSerialized()
 	if err != nil {
@@ -1251,7 +1252,7 @@ func doListAllZones() error {
 }
 
 // Do a migration from a legacy zone to a private zone
-func doMigrate(oldResourceGroup string, newResourceGroup string, migrateZone string, virtualNetwork string, link bool) error {
+func doMigrate(oldResourceGroup string, newResourceGroup string, migrateZone string, virtualNetwork string, vnetResourceGroup string, link bool) error {
 	session, err := GetSession()
 	if err != nil {
 		return err
@@ -1262,7 +1263,7 @@ func doMigrate(oldResourceGroup string, newResourceGroup string, migrateZone str
 	}
 
 	legacyDNSClient := NewLegacyDNSClient(session, oldResourceGroup)
-	privateDNSClient := NewPrivateDNSClient(session, newResourceGroup, virtualNetwork)
+	privateDNSClient := NewPrivateDNSClient(session, newResourceGroup, virtualNetwork, vnetResourceGroup)
 
 	// serialize and deserialize to make deep copies
 	szone, err := legacyDNSClient.GetZoneSerialized(migrateZone)
@@ -1376,6 +1377,10 @@ Arguments:
         # The virtual network to create the private zone in (optional)
         -virtualNetwork=vnet
 
+        # The resource group the virtual network is in (optional)
+        # Required if specifying a virtual network
+        -vnetResourceGroup=vrg
+
         # Link the newly created private zone to the virtual network for DNS (optional)
         -link=vnet
 
@@ -1444,15 +1449,17 @@ func cmdMigrate(flagArgs []string) error {
 	migrateOldResourceGroup := migrateCmd.String("oldResourceGroup", "", "oldResourceGroup")
 	migrateNewResourceGroup := migrateCmd.String("newResourceGroup", "", "newResourceGroup")
 	migrateVirtualNetwork := migrateCmd.String("virtualNetwork", "", "virtualNetwork")
+	migrateVnetResourceGroup := migrateCmd.String("vnetResourceGroup", "", "vnetResourceGroup")
 	migrateLink := migrateCmd.Bool("link", false, "link")
 	//migrateInteractive := migrateCmd.Bool("interactive", false, "interactive")
 
 	migrateCmd.Parse(flagArgs[1:])
-	if (*migrateZone == "" || *migrateOldResourceGroup == "") || (*migrateLink == true && *migrateVirtualNetwork == "") {
+	if (*migrateZone == "" || *migrateOldResourceGroup == "") || (*migrateLink == true && *migrateVirtualNetwork == "") ||
+		(*migrateVirtualNetwork != "" && *migrateVnetResourceGroup == "") {
 		usage()
 	}
 
-	return doMigrate(*migrateOldResourceGroup, *migrateNewResourceGroup, *migrateZone, *migrateVirtualNetwork, *migrateLink)
+	return doMigrate(*migrateOldResourceGroup, *migrateNewResourceGroup, *migrateZone, *migrateVirtualNetwork, *migrateVnetResourceGroup, *migrateLink)
 }
 
 func cmdEligible(flagArgs []string) error {
