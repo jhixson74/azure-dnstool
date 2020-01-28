@@ -17,7 +17,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	//azdns "github.com/Azure/azure-sdk-for-go/profiles/latest/dns/mgmt/dns"
 	aznetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-12-01/network"
 	azdns "github.com/Azure/azure-sdk-for-go/services/preview/dns/mgmt/2018-03-01-preview/dns"
 	azprivatedns "github.com/Azure/azure-sdk-for-go/services/privatedns/mgmt/2018-09-01/privatedns"
@@ -1451,7 +1450,6 @@ func cmdMigrate(flagArgs []string) error {
 	migrateVirtualNetwork := migrateCmd.String("virtualNetwork", "", "virtualNetwork")
 	migrateVnetResourceGroup := migrateCmd.String("vnetResourceGroup", "", "vnetResourceGroup")
 	migrateLink := migrateCmd.Bool("link", false, "link")
-	//migrateInteractive := migrateCmd.Bool("interactive", false, "interactive")
 
 	migrateCmd.Parse(flagArgs[1:])
 	if (*migrateZone == "" || *migrateOldResourceGroup == "") || (*migrateLink == true && *migrateVirtualNetwork == "") ||
@@ -1482,6 +1480,11 @@ func cmdTest(flagArgs []string) error {
 	return doTest(*testZone, *testResourceGroup)
 }
 
+// TODO: verify resource groups, vnets and zones
+// TODO: better output formatting and json output option
+// TODO: vnet unlink option
+// TODO: options to delete zone and vnet links
+// TODO: interactive migrate option
 func main() {
 	var err error
 
@@ -1521,10 +1524,6 @@ func main() {
 
 	case "test":
 		err = cmdTest(flagArgs)
-
-	// Possible commands?
-	//case "unlink":
-	//case "delete":
 
 	default:
 		usage()
