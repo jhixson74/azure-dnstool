@@ -1522,6 +1522,10 @@ func main() {
 	case "test":
 		err = cmdTest(flagArgs)
 
+	// Possible commands?
+	//case "unlink":
+	//case "delete":
+
 	default:
 		usage()
 	}
