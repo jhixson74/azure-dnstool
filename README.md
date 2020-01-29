@@ -18,13 +18,17 @@ Arguments:
     # Show legacy zones that are eligible to be migrated
     eligible
 
-        # No arguments
+        # Show legacy public zones (optional)
+        -public
 
     # list a zone(s)
     list
 
         # Show all zones and associated records, no other arguments are required
         -all
+
+        # Show public legacy zones (optional)
+        -public
 
         # Show a legacy zone and records, requires a resource group
         -legacyZone=zone
@@ -37,6 +41,9 @@ Arguments:
 
     # migrate a zone
     migrate
+
+        # Migrate a legacy public zone to a private zone (optional)
+        -public
 
         # The zone we want to migrate (required)
         -zone=example.com
