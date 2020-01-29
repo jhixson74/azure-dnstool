@@ -34,18 +34,19 @@ type LegacyDNSZoneInfo struct {
 
 type LegacyDNSClient struct {
 	resourceGroup    string
+	public           bool
 	zonesClient      azdns.ZonesClient
 	recordsetsClient azdns.RecordSetsClient
 }
 
-func NewLegacyDNSClient(session *Session, resourceGroup string) *LegacyDNSClient {
+func NewLegacyDNSClient(session *Session, resourceGroup string, public bool) *LegacyDNSClient {
 	zonesClient := azdns.NewZonesClient(session.Credentials.SubscriptionID)
 	zonesClient.Authorizer = session.Authorizer
 
 	recordsetsClient := azdns.NewRecordSetsClient(session.Credentials.SubscriptionID)
 	recordsetsClient.Authorizer = session.Authorizer
 
-	return &LegacyDNSClient{resourceGroup, zonesClient, recordsetsClient}
+	return &LegacyDNSClient{resourceGroup, public, zonesClient, recordsetsClient}
 }
 
 // safe pointer handling for int32
@@ -174,7 +175,7 @@ func (client *LegacyDNSClient) GetZoneSerialized(legacyZone string) (*LegacyDNSZ
 		return nil, err
 	}
 
-	if zone.ZoneProperties.ZoneType != azdns.Private {
+	if zone.ZoneProperties.ZoneType != azdns.Private && client.public == false {
 		return nil, errors.New("not a private zone")
 	}
 
@@ -215,7 +216,7 @@ func (client *LegacyDNSClient) GetZonesSerialized() ([]*LegacyDNSZoneSerialized,
 
 		for _, zone := range zonesPage.Values() {
 			zone.Response.Response = nil
-			if zone.ZoneProperties.ZoneType != azdns.Private {
+			if zone.ZoneProperties.ZoneType != azdns.Private && client.public == false {
 				continue
 			}
 
@@ -1095,13 +1096,13 @@ func doListLegacyZoneDeserialized(legacyDNSZoneInfo *LegacyDNSZoneInfo) {
 }
 
 // Retrives legacy zone info and prints it out
-func doListLegacyZone(resourceGroup string, legacyZone string) error {
+func doListLegacyZone(resourceGroup string, legacyZone string, public bool) error {
 	session, err := GetSession()
 	if err != nil {
 		return err
 	}
 
-	legacyDNSClient := NewLegacyDNSClient(session, resourceGroup)
+	legacyDNSClient := NewLegacyDNSClient(session, resourceGroup, public)
 
 	// Serialize/Deserialize to make deep copy
 	szone, err := legacyDNSClient.GetZoneSerialized(legacyZone)
@@ -1184,13 +1185,13 @@ func doListPrivateZone(resourceGroup string, privateZone string) error {
 }
 
 // Print all legacy zones
-func doListAllLegacyZones() error {
+func doListAllLegacyZones(public bool) error {
 	session, err := GetSession()
 	if err != nil {
 		return err
 	}
 
-	legacyDNSClient := NewLegacyDNSClient(session, "")
+	legacyDNSClient := NewLegacyDNSClient(session, "", public)
 
 	szones, err := legacyDNSClient.GetZonesSerialized()
 	if err != nil {
@@ -1234,10 +1235,10 @@ func doListAllPrivateZones() error {
 }
 
 // Print all legacy and private zones
-func doListAllZones() error {
+func doListAllZones(public bool) error {
 	var err error = nil
 
-	err = doListAllLegacyZones()
+	err = doListAllLegacyZones(public)
 	if err != nil {
 		return err
 	}
@@ -1251,7 +1252,7 @@ func doListAllZones() error {
 }
 
 // Do a migration from a legacy zone to a private zone
-func doMigrate(oldResourceGroup string, newResourceGroup string, migrateZone string, virtualNetwork string, vnetResourceGroup string, link bool) error {
+func doMigrate(oldResourceGroup string, newResourceGroup string, migrateZone string, virtualNetwork string, vnetResourceGroup string, link bool, public bool) error {
 	session, err := GetSession()
 	if err != nil {
 		return err
@@ -1261,7 +1262,7 @@ func doMigrate(oldResourceGroup string, newResourceGroup string, migrateZone str
 		newResourceGroup = oldResourceGroup
 	}
 
-	legacyDNSClient := NewLegacyDNSClient(session, oldResourceGroup)
+	legacyDNSClient := NewLegacyDNSClient(session, oldResourceGroup, public)
 	privateDNSClient := NewPrivateDNSClient(session, newResourceGroup, virtualNetwork, vnetResourceGroup)
 
 	// serialize and deserialize to make deep copies
@@ -1285,13 +1286,13 @@ func doMigrate(oldResourceGroup string, newResourceGroup string, migrateZone str
 }
 
 // Show legacy zones that are eligible for migrating to private zones
-func doEligible() error {
+func doEligible(public bool) error {
 	session, err := GetSession()
 	if err != nil {
 		return err
 	}
 
-	legacyDNSClient := NewLegacyDNSClient(session, "")
+	legacyDNSClient := NewLegacyDNSClient(session, "", public)
 
 	szones, err := legacyDNSClient.GetZonesSerialized()
 	if err != nil {
@@ -1320,7 +1321,7 @@ func doTest(zoneName string, resourceGroup string) error {
 		return err
 	}
 
-	legacyDNSClient := NewLegacyDNSClient(session, resourceGroup)
+	legacyDNSClient := NewLegacyDNSClient(session, resourceGroup, false)
 	err = legacyDNSClient.CreateZoneWithRecordSets(zoneName)
 	if err != nil {
 		return err
@@ -1344,13 +1345,17 @@ Arguments:
     # Show legacy zones that are eligible to be migrated
     eligible
 
-        # No arguments
+        # Show legacy public zones (optional)
+        -public
 
     # list a zone(s)
     list
 
         # Show all zones and associated records, no other arguments are required
         -all
+
+        # Show public legacy zones (optional)
+        -public
 
         # Show a legacy zone and records, requires a resource group
         -legacyZone=zone
@@ -1363,6 +1368,9 @@ Arguments:
 
     # migrate a zone
     migrate
+
+        # Migrate a legacy public zone to a private zone (optional)
+        -public
 
         # The zone we want to migrate (required)
         -zone=example.com
@@ -1383,7 +1391,7 @@ Arguments:
         # Link the newly created private zone to the virtual network for DNS (optional)
         -link=vnet
 
-    # create a legacy zone for testing
+    # create a legacy private zone for testing
     test
 
         # The resource group to create the legacy zone in (required)
@@ -1424,10 +1432,11 @@ func cmdList(flagArgs []string) error {
 	listPrivateZone := listCmd.String("privateZone", "", "privateZone")
 	listResourceGroup := listCmd.String("resourceGroup", "", "resourceGroup")
 	listAll := listCmd.Bool("all", false, "all")
+	listPublic := listCmd.Bool("public", false, "public")
 
 	listCmd.Parse(flagArgs[1:])
 	if *listAll == true {
-		return doListAllZones()
+		return doListAllZones(*listPublic)
 	}
 
 	// We can probably remove the need for the resource group
@@ -1436,7 +1445,7 @@ func cmdList(flagArgs []string) error {
 	}
 
 	if *listLegacyZone != "" {
-		return doListLegacyZone(*listResourceGroup, *listLegacyZone)
+		return doListLegacyZone(*listResourceGroup, *listLegacyZone, *listPublic)
 	}
 
 	return doListPrivateZone(*listResourceGroup, *listPrivateZone)
@@ -1450,6 +1459,7 @@ func cmdMigrate(flagArgs []string) error {
 	migrateVirtualNetwork := migrateCmd.String("virtualNetwork", "", "virtualNetwork")
 	migrateVnetResourceGroup := migrateCmd.String("vnetResourceGroup", "", "vnetResourceGroup")
 	migrateLink := migrateCmd.Bool("link", false, "link")
+	migratePublic := migrateCmd.Bool("public", false, "public")
 
 	migrateCmd.Parse(flagArgs[1:])
 	if (*migrateZone == "" || *migrateOldResourceGroup == "") || (*migrateLink == true && *migrateVirtualNetwork == "") ||
@@ -1457,14 +1467,15 @@ func cmdMigrate(flagArgs []string) error {
 		usage()
 	}
 
-	return doMigrate(*migrateOldResourceGroup, *migrateNewResourceGroup, *migrateZone, *migrateVirtualNetwork, *migrateVnetResourceGroup, *migrateLink)
+	return doMigrate(*migrateOldResourceGroup, *migrateNewResourceGroup, *migrateZone, *migrateVirtualNetwork, *migrateVnetResourceGroup, *migrateLink, *migratePublic)
 }
 
 func cmdEligible(flagArgs []string) error {
 	eligibleCmd := flag.NewFlagSet("eligible", flag.ExitOnError)
+	eligiblePublic := eligibleCmd.Bool("public", false, "public")
 	eligibleCmd.Parse(flagArgs[1:])
 
-	return doEligible()
+	return doEligible(*eligiblePublic)
 }
 
 func cmdTest(flagArgs []string) error {
