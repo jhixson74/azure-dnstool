@@ -89,7 +89,7 @@ Examples:
 
     # This will migrate a legacy zone to a private zone
     # Without specifying -link, a virtual network link from the new zone to the vnet will not be created
-    azure-dnstool migrate -oldResourceGroup=rg -newResourceGroup=rg -zone=example.com -virtualNetwork=myvnet -link
+    azure-dnstool migrate -oldResourceGroup=rg -newResourceGroup=rg -zone=example.com -vnetResourceGroup=rg -virtualNetwork=myvnet -link
 
     # This will create a legacy zone with 10 A records
     azure-dnstool test -resourceGroup=rg -zone=example.com

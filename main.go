@@ -942,6 +942,11 @@ func (client *PrivateDNSClient) MigrateLegacyZone(legacyDNSZoneInfo *LegacyDNSZo
 	for _, legacyRecordSet := range legacyRecordSets {
 		recordType := strings.Replace(*legacyRecordSet.Type, "/dnszones/", "/privateDnsZones/", 1)
 
+		// NS not supported in private zones
+		if strings.TrimPrefix(recordType, "Microsoft.Network/privateDnsZones/") == string(azdns.NS) {
+			continue
+		}
+
 		privateRecordSet := azprivatedns.RecordSet{
 			Name: legacyRecordSet.Name,
 			RecordSetProperties: &azprivatedns.RecordSetProperties{
@@ -1416,7 +1421,7 @@ Examples:
 
     # This will migrate a legacy zone to a private zone
     # Without specifying -link, a virtual network link from the new zone to the vnet will not be created
-    azure-dnstool migrate -oldResourceGroup=rg -newResourceGroup=rg -zone=example.com -virtualNetwork=myvnet -link
+    azure-dnstool migrate -oldResourceGroup=rg -newResourceGroup=rg -zone=example.com -vnetResourceGroup=rg -virtualNetwork=myvnet -link
 
     # This will create a legacy zone with 10 A records
     azure-dnstool test -resourceGroup=rg -zone=example.com
